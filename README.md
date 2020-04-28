@@ -2,7 +2,7 @@
 
 This repository contains a webbased viewer for ESDL. 
 
-
+![example](https://github.com/Geodan/esdl_viewer/blob/master/webviewer_example.png)
 
 
 
