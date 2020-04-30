@@ -9,7 +9,7 @@ Created on Wed Mar 25 18:29:03 2020
 from io import BytesIO
 
 import psycopg2
-from shapely.geometry import LineString
+from shapely.geometry import Point, LineString
 from shapely import wkb
 
 import pyecore
@@ -54,6 +54,8 @@ class StringURI(URI):
 
 def ecore_obj_to_json(obj):
     uri = StringURI('')
+    if hasattr(obj, 'commissioningDate'): obj.commissioningDate = None
+    if hasattr(obj, 'decommissioningDate'): obj.decommissioningDate = None
     resource = JsonResource(uri)
     resource.append(obj)
     resource.save()
@@ -89,17 +91,20 @@ def esdl2database(f_name):
     assets = get_assets(instance)
     for a in assets:
         try:
+            crs = int(a.geometry.CRS.split(':')[1])
+        except (AttributeError, IndexError, ValueError):
+            crs = 4326
+        try:
             if type(a.geometry).__name__ == "Point":
-                geom_point = 'SRID=4326;POINT(%s %s)' % (a.geometry.lon, a.geometry.lat)
-                geom_line = None
+                geom = Point(a.geometry.lon, a.geometry.lat).wkt
+            elif type(a.geometry).__name__ == "WKT":
+                geom = a.geometry.value
             else:
-                geom_point = None
-                geom_line = LineString([(p.lon, p.lat) for p in a.geometry.point]).wkt
+                geom = LineString([(p.lon, p.lat) for p in a.geometry.point]).wkt
         except AttributeError:
-            geom_point = None
-            geom_line = None
-        t = (es.name, instance.name, a.id, a.name, type(a).__name__, ecore_obj_to_json(a), geom_point, geom_line)
-        cursor.execute('INSERT INTO test.asset VALUES (%s, %s, %s, %s, %s, %s, %s, ST_SetSRID(%s::geometry, 4326))', t)
+            geom = None
+        t = (es.name, instance.name, a.id, a.name, type(a).__name__, ecore_obj_to_json(a), geom, crs)
+        cursor.execute('INSERT INTO test.asset VALUES (%s, %s, %s, %s, %s, %s, ST_SetSRID(%s::geometry, %s))', t)
     cursor.close()
     conn.commit()
     conn.close()

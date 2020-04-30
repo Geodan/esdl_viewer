@@ -96,8 +96,9 @@ tree.on('action', e => {
     console.log(e.parentNode.children[0].innerHTML, e.text);
     var energysystem = e.parentNode.children[0].innerHTML;
     document.getElementById('assetjson').innerHTML = "";
-    map.getSource('point').setData('http://127.0.0.1:5000/geolayer/geom_point/' + energysystem + '/' + e.text);
-    map.getSource('transport').setData('http://127.0.0.1:5000/geolayer/geom_line/' + energysystem + '/' + e.text);
+    map.getSource('point').setData('http://127.0.0.1:5000/geolayer/ST_Point/' + energysystem + '/' + e.text);
+    map.getSource('transport').setData('http://127.0.0.1:5000/geolayer/ST_LineString/' + energysystem + '/' + e.text);
+    map.getSource('poly').setData('http://127.0.0.1:5000/geolayer/ST_Polygon/' + energysystem + '/' + e.text);
     //map.getSource('inout').setData('http://127.0.0.1:5000/inout/' + e.text);
     fetch('http://127.0.0.1:5000/center/' + energysystem + '/' + e.text)
         .then(res => res.json())
@@ -163,6 +164,23 @@ map.on('load', function () {
         }
     });
     
+    map.addSource('poly', {
+      type: 'geojson',
+      data: {
+                'type': 'FeatureCollection',
+                'features': []
+            }
+    });
+    map.addLayer({
+        "id": "poly",
+        "source": "poly",
+        'type': 'fill',
+        'paint': {
+            'fill-color': '#32CD32',
+            'fill-opacity': 0.5
+        }
+    });
+    
     map.addSource('inout', {
       type: 'geojson',
       data: {
@@ -193,6 +211,7 @@ function show_assetinfo(e) {
 
 map.on('click', 'point', show_assetinfo);
 map.on('click', 'transport', show_assetinfo);
+map.on('click', 'poly', show_assetinfo);
 
 </script>
 

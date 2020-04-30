@@ -69,7 +69,7 @@ from (
     from (
         select
             'Feature' as "type",
-            ST_AsGeoJSON(ST_Transform({}, 4326), 6) :: json as "geometry",
+            ST_AsGeoJSON(ST_Transform(geom, 4326), 6) :: json as "geometry",
             (
                 select json_strip_nulls(row_to_json(t))
                 from (
@@ -79,7 +79,7 @@ from (
         FROM test.asset a
 		WHERE energysystem = %s 
 		AND instance = %s
-		AND {} is not NULL
+		AND (ST_GeometryType(geom) = %s OR ST_GeometryType(geom) = %s)
     ) as f
 ) as fc;
     """
@@ -89,7 +89,8 @@ from (
                                   port = "5432",
                                   database = "ESDL_DB")
     cursor = connection.cursor()
-    cursor.execute(sql.SQL(query).format(sql.Identifier(geomtype), sql.Identifier(geomtype)), (energysystem, instance))
+    geomtype2 = '_Multi'.join(geomtype.split('_'))
+    cursor.execute(query, (energysystem, instance, geomtype, geomtype2))
     result = cursor.fetchone()[0]
     connection.close()
     return result
@@ -99,12 +100,13 @@ def get_center(energysystem, instance):
     query = """
         select
             COALESCE(
-                ST_AsGeoJSON(ST_Transform(ST_Centroid(ST_Union(geom_point)), 4326), 6)::json,
+                ST_AsGeoJSON(ST_Transform(ST_Centroid(ST_Union(geom)), 4326), 6)::json,
                 (SELECT row_to_json(t) FROM (SELECT '[5.1, 52.27]'::json as coordinates, 'Point' as type) t)
             ) as "geometry"
         FROM test.asset
 		WHERE energysystem = %s 
 		AND instance = %s
+		AND ST_GeometryType(geom) = 'ST_Point'
     """
     connection = psycopg2.connect(user = "danielm",
                                   password = "",
