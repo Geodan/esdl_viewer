@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8' />
+    <title></title>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v1.4.0/mapbox-gl.js'></script>
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v1.4.0/mapbox-gl.css' rel='stylesheet' />
+    <link rel="stylesheet" href="libraries/tree.css">
+    <script src="libraries/tree.js"></script>
+    <link rel="stylesheet" href="libraries/jsonview.css">
+    <script src="libraries/jsonview.js"></script>
+    <style>
+        body { margin:0; padding:0; }
+        #lefttoppanel { position:absolute; top:5%; bottom:0; width:15%; height:15%; left: 1%;}
+        #leftbottompanel { position:absolute; top:20%; bottom:0; width:15%; left: 1%;}
+		#map { position:absolute; top:0; bottom:0; width: 60%; left: 15%; right: 15%; border-left: 1px solid #000;}
+		#rightpanel { position:absolute; top:0; bottom:0; width:25%; right: 0; border-left: 1px solid #000; }
+    </style>
+</head>
+
+<body>
+
+<div id='lefttoppanel'>
+    <label for="file">Upload ESDL: </label>
+    <input type="file" id="file" name="file" accept='.esdl,.ESDL' />
+    <label for="delete_esdl">Delete ESDL: </label>
+    <select id="delete_esdl" name="delete_esdl"></select>
+    <button id="delete_button" type="button">Delete</button>
+</div>
+<div id='leftbottompanel'>
+    <div id="tree"></div>
+</div>
+<div id='map'></div>
+<div id='rightpanel'>
+    <div id="assetjson" class="assetjson"></div>
+</div>
+
+
+<script>
+
+document.getElementById('file').addEventListener(
+    'change', 
+    function (evt) {
+        var formData = new FormData();
+        formData.append('file', evt.target.files[0]);
+        fetch("http://127.0.0.1:5000/upload/", { method: 'POST', body: formData })
+            .then(res => res.json()).then((out) => {
+                document.getElementById('tree').children[0].innerHTML = '<summary></summary>'; 
+                tree.json(out);
+                update_delete_options();
+            })
+        evt.target.value = ''
+    }, 
+    false
+);
+
+
+var sel_delete = document.getElementById('delete_esdl');
+
+document.getElementById('delete_button').addEventListener(
+    'click',
+    function (evt) {
+        let index = sel_delete.selectedIndex < 0 ? 0 : sel_delete.selectedIndex
+        fetch("http://127.0.0.1:5000/delete/" + sel_delete.options[index].text)
+            .then(res => res.json()).then((out) => {
+                document.getElementById('tree').children[0].innerHTML = '<summary></summary>'; 
+                tree.json(out);
+                update_delete_options();
+            })
+    },
+    false
+);
+
+function update_delete_options() {
+    sel_delete.innerHTML = '';
+    var file_tree = document.getElementById('tree');
+    var len = file_tree.children[0].children.length;
+    var options = [];
+    for (let i = 1; i < (len); i++) {
+        options.push(document.createElement("option"));
+        options[i-1].text = file_tree.children[0].children[i].children[0].innerHTML;
+        sel_delete.add(options[i-1]);
+    }
+}
+
+
+var tree = new Tree(document.getElementById('tree'));
+fetch('http://127.0.0.1:5000/ES')
+    .then(res => res.json())
+    .then((out) => {
+        tree.json(out);
+        update_delete_options();
+})
+tree.on('action', e => {
+    console.log(e.parentNode.children[0].innerHTML, e.text);
+    var energysystem = e.parentNode.children[0].innerHTML;
+    document.getElementById('assetjson').innerHTML = "";
+    map.getSource('point').setData('http://127.0.0.1:5000/geolayer/ST_Point/' + energysystem + '/' + e.text);
+    map.getSource('transport').setData('http://127.0.0.1:5000/geolayer/ST_LineString/' + energysystem + '/' + e.text);
+    map.getSource('poly').setData('http://127.0.0.1:5000/geolayer/ST_Polygon/' + energysystem + '/' + e.text);
+    //map.getSource('inout').setData('http://127.0.0.1:5000/inout/' + e.text);
+    fetch('http://127.0.0.1:5000/center/' + energysystem + '/' + e.text)
+        .then(res => res.json())
+        .then((out) => {
+            map.flyTo({ center: out.coordinates, zoom: 11 });
+        })
+});
+
+
+var map = new mapboxgl.Map({
+    container: 'map',
+    style: 'https://api.maptiler.com/maps/streets/style.json?key=DnTMUKM1IaBfW6AjV7bn',
+    zoom: 7,
+    center: [5.1, 52.27]
+});
+
+map.on('load', function () {
+
+    
+    map.addSource('point', {
+      type: 'geojson',
+      data: {
+                'type': 'FeatureCollection',
+                'features': []
+            }
+    });
+    map.addLayer({
+        "id": "point",
+        "source": "point",
+        'type': 'circle',
+        'paint': {
+            'circle-radius': 7,
+            'circle-color': [
+                'match',
+                ['get', 'class'],
+                'AggregatedBuilding',
+                '#fbb03b',
+                'HeatingDemand',
+                '#223b53',
+                'ElectricityDemand',
+                '#e55e5e',
+                'GasDemand',
+                '#3bb2d0',
+                /* other */ '#ccc'
+            ]
+        }
+    });
+    
+    map.addSource('transport', {
+      type: 'geojson',
+      data: {
+                'type': 'FeatureCollection',
+                'features': []
+            }
+    });
+    map.addLayer({
+        "id": "transport",
+        "source": "transport",
+        'type': 'line',
+        'paint': {
+            'line-color': '#800080',
+            'line-width': 3
+        }
+    });
+    
+    map.addSource('poly', {
+      type: 'geojson',
+      data: {
+                'type': 'FeatureCollection',
+                'features': []
+            }
+    });
+    map.addLayer({
+        "id": "poly",
+        "source": "poly",
+        'type': 'fill',
+        'paint': {
+            'fill-color': '#32CD32',
+            'fill-opacity': 0.5
+        }
+    });
+    
+    map.addSource('inout', {
+      type: 'geojson',
+      data: {
+                'type': 'FeatureCollection',
+                'features': []
+            }
+    });
+    map.addLayer({
+        "id": "inout",
+        "source": "inout",
+        'type': 'line',
+        'paint': {
+            'line-color': '#a9a9a9',
+            'line-width': 2
+        }
+    });
+    
+});
+
+function show_assetinfo(e) {
+    fetch('http://127.0.0.1:5000/assetinfo/' + e.features[0].properties.id)
+    .then(res => res.json())
+    .then((out) => {
+        document.getElementById('assetjson').innerHTML = "";
+        jsonView.format(out, '.assetjson');
+    })
+}
+
+map.on('click', 'point', show_assetinfo);
+map.on('click', 'transport', show_assetinfo);
+map.on('click', 'poly', show_assetinfo);
+
+</script>
+
+</body>
+</html>
