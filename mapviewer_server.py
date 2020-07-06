@@ -9,7 +9,7 @@ import os
 
 import psycopg2
 from psycopg2 import sql
-from flask import Flask, flash, request, redirect, url_for
+from flask import Flask, flash, request, redirect, url_for, jsonify
 from werkzeug.utils import secure_filename
 app = Flask(__name__)
 app.secret_key = "super secret key"
@@ -93,7 +93,7 @@ from (
     cursor.execute(query, (energysystem, instance, geomtype, geomtype2))
     result = cursor.fetchone()[0]
     connection.close()
-    return result
+    return jsonify(result)
 
 @app.route("/center/<energysystem>/<instance>")
 def get_center(energysystem, instance):
@@ -117,7 +117,7 @@ def get_center(energysystem, instance):
     cursor.execute(sql.SQL(query), (energysystem, instance))
     result = cursor.fetchone()[0]
     connection.close()
-    return result
+    return jsonify(result)
 
 
 @app.route("/inout/<instance>")
@@ -159,7 +159,7 @@ from (
     cursor.execute(query, (instance,))
     result = cursor.fetchone()[0]
     connection.close()
-    return result
+    return jsonify(result)
 
 
 @app.route("/assetinfo/<id>")
@@ -178,7 +178,7 @@ def get_assetinfo(id):
     cursor.execute(query, (id,))
     result = cursor.fetchone()[0]
     connection.close()
-    return result
+    return jsonify(result)
 
 
 @app.route('/upload/', methods=['POST'])
@@ -220,7 +220,7 @@ def delete(energysystem):
 
 
 if __name__ == "__main__":
-    app.run()
+    app.run(host="0.0.0.0", port=1900)
 
 
 

@@ -44,7 +44,7 @@ document.getElementById('file').addEventListener(
     function (evt) {
         var formData = new FormData();
         formData.append('file', evt.target.files[0]);
-        fetch("http://127.0.0.1:5000/upload/", { method: 'POST', body: formData })
+        fetch("http://leda.geodan.nl:1900/upload/", { method: 'POST', body: formData })
             .then(res => res.json()).then((out) => {
                 document.getElementById('tree').children[0].innerHTML = '<summary></summary>'; 
                 tree.json(out);
@@ -62,7 +62,7 @@ document.getElementById('delete_button').addEventListener(
     'click',
     function (evt) {
         let index = sel_delete.selectedIndex < 0 ? 0 : sel_delete.selectedIndex
-        fetch("http://127.0.0.1:5000/delete/" + sel_delete.options[index].text)
+        fetch("http://leda.geodan.nl:1900/delete/" + sel_delete.options[index].text)
             .then(res => res.json()).then((out) => {
                 document.getElementById('tree').children[0].innerHTML = '<summary></summary>'; 
                 tree.json(out);
@@ -86,7 +86,7 @@ function update_delete_options() {
 
 
 var tree = new Tree(document.getElementById('tree'));
-fetch('http://127.0.0.1:5000/ES')
+fetch('http://leda.geodan.nl:1900/ES')
     .then(res => res.json())
     .then((out) => {
         tree.json(out);
@@ -96,11 +96,11 @@ tree.on('action', e => {
     console.log(e.parentNode.children[0].innerHTML, e.text);
     var energysystem = e.parentNode.children[0].innerHTML;
     document.getElementById('assetjson').innerHTML = "";
-    map.getSource('point').setData('http://127.0.0.1:5000/geolayer/ST_Point/' + energysystem + '/' + e.text);
-    map.getSource('transport').setData('http://127.0.0.1:5000/geolayer/ST_LineString/' + energysystem + '/' + e.text);
-    map.getSource('poly').setData('http://127.0.0.1:5000/geolayer/ST_Polygon/' + energysystem + '/' + e.text);
-    //map.getSource('inout').setData('http://127.0.0.1:5000/inout/' + e.text);
-    fetch('http://127.0.0.1:5000/center/' + energysystem + '/' + e.text)
+    map.getSource('point').setData('http://leda.geodan.nl:1900/geolayer/ST_Point/' + energysystem + '/' + e.text);
+    map.getSource('transport').setData('http://leda.geodan.nl:1900/geolayer/ST_LineString/' + energysystem + '/' + e.text);
+    map.getSource('poly').setData('http://leda.geodan.nl:1900/geolayer/ST_Polygon/' + energysystem + '/' + e.text);
+    //map.getSource('inout').setData('http://leda.geodan.nl:1900/inout/' + e.text);
+    fetch('http://leda.geodan.nl:1900/center/' + energysystem + '/' + e.text)
         .then(res => res.json())
         .then((out) => {
             map.flyTo({ center: out.coordinates, zoom: 11 });
@@ -201,7 +201,7 @@ map.on('load', function () {
 });
 
 function show_assetinfo(e) {
-    fetch('http://127.0.0.1:5000/assetinfo/' + e.features[0].properties.id)
+    fetch('http://leda.geodan.nl:1900/assetinfo/' + e.features[0].properties.id)
     .then(res => res.json())
     .then((out) => {
         document.getElementById('assetjson').innerHTML = "";
